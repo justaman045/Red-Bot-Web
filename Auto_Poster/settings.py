@@ -28,7 +28,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', secrets.token_hex(32))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True # Set to False in production
 
-ALLOWED_HOSTS = [] # Add your PythonAnywhere domain here, e.g., ['your_username.pythonanywhere.com']
+ALLOWED_HOSTS = ['*'] # Add your PythonAnywhere domain here, e.g., ['your_username.pythonanywhere.com']
 
 
 # Application definition
