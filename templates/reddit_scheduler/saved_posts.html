@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+
+{% block title %}Saved Posts{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-8 bg-white rounded-xl shadow-2xl border border-gray-200">
+    <h2 class="text-4xl font-extrabold text-gray-800 mb-6 text-center">Your Saved Reddit Posts</h2>
+    <div id="message-container" class="mb-6 text-center"></div>
+
+    <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+        <label for="redditAccountSelect" class="block text-lg font-medium text-gray-700 mb-2">Select Reddit Account to Fetch From:</label>
+        <select id="redditAccountSelect" class="form-field">
+            <option value="">-- Select an account --</option>
+            <!-- Options will be populated by JavaScript -->
+        </select>
+        <button id="fetch-posts-btn" class="mt-4 w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-lg btn-info flex items-center justify-center space-x-3 transform hover:scale-105">
+            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm0 7a1 1 0 011-1h12a1 1 0 011 1v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7z" clip-rule="evenodd"></path></svg>
+            <span>Fetch Saved Posts</span>
+        </button>
+    </div>
+
+    <div id="loading-indicator" class="text-center text-gray-600 italic hidden p-4">
+        <svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Fetching posts... This might take a moment.
+    </div>
+
+    <div id="saved-posts-list" class="space-y-6">
+        <p class="text-gray-600 italic text-center p-4 rounded-md bg-gray-50 border border-gray-100">No saved posts found. Select a Reddit account and click "Fetch Saved Posts" to load them.</p>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    const messageContainer = document.getElementById('message-container');
+    const redditAccountSelect = document.getElementById('redditAccountSelect');
+    const fetchPostsBtn = document.getElementById('fetch-posts-btn');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const savedPostsList = document.getElementById('saved-posts-list');
+
+    async function fetchRedditAccountsForSelect() {
+        try {
+            const response = await fetch('{% url "get_reddit_accounts_api" %}');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+            const data = await response.json();
+            redditAccountSelect.innerHTML = '<option value="">-- Select an account --</option>'; // Reset options
+            if (data.accounts && data.accounts.length > 0) {
+                data.accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = `u/${account.username}`;
+                    redditAccountSelect.appendChild(option);
+                });
+            } else {
+                messageContainer.innerHTML = '<p class="p-3 rounded-md text-red-600 bg-red-100">No Reddit accounts connected. Please connect one via "Connect Reddit" page.</p>';
+            }
+        } catch (error) {
+            console.error('Error fetching Reddit accounts for select:', error);
+            messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">Error loading Reddit accounts for fetching: ${error.message}</p>`;
+        }
+    }
+
+    async function fetchAndRenderSavedPosts() {
+        loadingIndicator.classList.remove('hidden');
+        savedPostsList.innerHTML = ''; // Clear previous posts
+        messageContainer.innerHTML = '';
+
+        try {
+            const response = await fetch('{% url "get_saved_posts" %}');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+            const data = await response.json();
+
+            if (data.posts && data.posts.length > 0) {
+                data.posts.forEach(post => {
+                    const postDiv = document.createElement('div');
+                    postDiv.className = 'bg-gray-100 p-6 rounded-lg shadow-md border border-gray-200';
+                    postDiv.innerHTML = `
+                        <h3 class="text-xl font-semibold text-indigo-700 mb-2">${post.title}</h3>
+                        <p class="text-gray-600 text-sm mb-2">From r/${post.original_subreddit}</p>
+                        <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline text-sm block mb-2">
+                            View Original Post
+                        </a>
+                        ${post.media_url ? `<p class="text-gray-500 text-sm mb-2">Media: <a href="${post.media_url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${post.media_url}</a></p>` : ''}
+                        <p class="text-gray-700 font-medium">Status: <span class="capitalize font-bold">${post.status}</span></p>
+                        ${post.scheduled_date ? `<p class="text-gray-700 text-sm">Scheduled: ${new Date(post.scheduled_date).toLocaleString()}</p>` : ''}
+                        ${post.posted_date ? `<p class="text-gray-700 text-sm">Posted: ${new Date(post.posted_date).toLocaleString()}</p>` : ''}
+                        <div class="mt-4 flex justify-end space-x-2"> {# Added space-x-2 for button spacing #}
+                            ${post.status === 'pending' ? `
+                                <button data-post-id="${post.id}" class="schedule-post-btn px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 text-sm btn-success">
+                                    Schedule Post
+                                </button>
+                                <a href="/reddit/posts/${post.id}/post-now-select-subreddits/" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 text-sm btn-info">
+                                    Post Now
+                                </a>
+                            ` : ''}
+                            <button data-post-id="${post.id}" class="delete-post-btn px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 text-sm btn-danger">
+                                Delete
+                            </button>
+                        </div>
+                    `;
+                    savedPostsList.appendChild(postDiv);
+                });
+                // Add event listeners to new schedule and delete buttons
+                document.querySelectorAll('.schedule-post-btn').forEach(button => {
+                    button.addEventListener('click', handleSchedulePost);
+                });
+                document.querySelectorAll('.delete-post-btn').forEach(button => {
+                    button.addEventListener('click', handleDeletePost);
+                });
+            } else {
+                savedPostsList.innerHTML = '<p class="text-gray-600 italic text-center p-4 rounded-md bg-gray-50 border border-gray-100">No saved posts found for your account. Fetch posts from a connected Reddit account.</p>';
+            }
+        } catch (error) {
+            console.error('Error fetching saved posts:', error);
+            savedPostsList.innerHTML = `<p class="text-red-600 text-center p-4 rounded-md bg-red-50 border border-red-100">Error loading saved posts: ${error.message}</p>`;
+        } finally {
+            loadingIndicator.classList.add('hidden');
+        }
+    }
+
+    async function handleFetchPosts() {
+        const selectedAccountId = redditAccountSelect.value;
+        if (!selectedAccountId) {
+            messageContainer.innerHTML = '<p class="p-3 rounded-md text-red-600 bg-red-100">Please select a Reddit account to fetch posts from.</p>';
+            return;
+        }
+
+        loadingIndicator.classList.remove('hidden');
+        messageContainer.innerHTML = '<p class="p-3 rounded-md text-blue-600 bg-blue-100">Fetching posts... This might take a moment.</p>';
+
+        try {
+            const response = await fetch('{% url "fetch_saved_posts" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ reddit_account_id: selectedAccountId }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+            const data = await response.json();
+            if (response.ok) {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-green-600 bg-green-100">${data.message}</p>`;
+                fetchAndRenderSavedPosts(); // Re-fetch and render all saved posts
+            } else {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">${data.message || 'Failed to fetch posts.'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error fetching posts:', error);
+            messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">An error occurred while fetching posts: ${error.message}</p>`;
+        } finally {
+            loadingIndicator.classList.add('hidden');
+        }
+    }
+
+    async function handleSchedulePost(event) {
+        const postId = event.target.dataset.postId;
+        // In a real app, you'd show a modal to select a date/time
+        const scheduledDate = new Date(); // For now, just schedule for now
+        scheduledDate.setMinutes(scheduledDate.getMinutes() + 5); // 5 minutes from now for testing
+
+        // Using a custom modal/dialog instead of `confirm()`
+        if (!window.confirm(`Schedule this post for ${scheduledDate.toLocaleString()}?`)) { // Temporarily using confirm for simplicity, replace with custom modal
+             return;
+        }
+
+        messageContainer.innerHTML = '<p class="p-3 rounded-md text-blue-600 bg-blue-100">Scheduling post...</p>';
+
+        try {
+            const response = await fetch('{% url "schedule_post" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ post_id: postId, scheduled_date: scheduledDate.toISOString() }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+            const data = await response.json();
+            if (response.ok) {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-green-600 bg-green-100">${data.message}</p>`;
+                fetchAndRenderSavedPosts(); // Refresh list to show updated status
+            } else {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">${data.message || 'Failed to schedule post.'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error scheduling post:', error);
+            messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">An error occurred while scheduling the post: ${error.message}</p>`;
+        }
+    }
+
+    async function handleDeletePost(event) {
+        const postId = event.target.dataset.postId;
+
+        // Using a custom modal/dialog instead of `confirm()`
+        if (!window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) { // Temporarily using confirm for simplicity, replace with custom modal
+            return;
+        }
+
+        messageContainer.innerHTML = '<p class="p-3 rounded-md text-blue-600 bg-blue-100">Deleting post...</p>';
+
+        try {
+            const response = await fetch(`/reddit/posts/${postId}/delete/`, { // Correct URL for delete
+                method: 'POST', // Use POST for deletion
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+            const data = await response.json();
+            if (response.ok) {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-green-600 bg-green-100">${data.message}</p>`;
+                fetchAndRenderSavedPosts(); // Refresh list to show updated status
+            } else {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">${data.message || 'Failed to delete post.'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">An error occurred while deleting the post: ${error.message}</p>`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchRedditAccountsForSelect();
+        fetchAndRenderSavedPosts(); // Load existing saved posts on page load
+        fetchPostsBtn.addEventListener('click', handleFetchPosts);
+    });
+</script>
+{% endblock %}
+{% endblock content %}

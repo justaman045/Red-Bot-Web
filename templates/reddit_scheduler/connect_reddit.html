@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Connect Reddit Account{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto p-8 bg-white rounded-xl shadow-2xl border border-gray-200">
+    <h2 class="text-4xl font-extrabold text-gray-800 mb-6 text-center">Connect Reddit Account</h2>
+    <div id="message-container" class="mb-6 text-center">
+        {% if messages %}
+            {% for message in messages %}
+                <p class="p-3 rounded-md {% if message.tags %}text-{{ message.tags }}-600 bg-{{ message.tags }}-100{% endif %}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+        {% if request.GET.message %}
+            <p class="p-3 rounded-md text-green-600 bg-green-100">{{ request.GET.message }}</p>
+        {% endif %}
+        {% if request.GET.error_message %}
+            <p class="p-3 rounded-md text-red-600 bg-red-100">{{ request.GET.error_message }}</p>
+        {% endif %}
+    </div>
+
+    <button id="connect-reddit-btn" class="w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-lg btn-danger flex items-center justify-center space-x-3 transform hover:scale-105">
+        <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm5.75 13.5c-.25 1.125-1.125 2-2.25 2.25-.875.125-1.75.25-2.625.25-.875 0-1.75-.125-2.625-.25-1.125-.25-2-1.125-2.25-2.25-.125-.875-.25-1.75-.25-2.625 0-.875.125-1.75.25-2.625.25-1.125 1.125-2 2.25-2.25.875-.125 1.75-.25 2.625-.25.875 0 1.75.125 2.625.25 1.125.25 2 1.125 2.25 2.25.125.875.25 1.75.25 2.625 0 .875-.125 1.75-.25 2.625zM10 5.5c-2.485 0-4.5 2.015-4.5 4.5s2.015 4.5 4.5 4.5 4.5-2.015 4.5-4.5-2.015-4.5-4.5-4.5z" clip-rule="evenodd"></path></svg>
+        <span>Connect with Reddit</span>
+    </button>
+
+    <div class="mt-10">
+        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Your Connected Reddit Accounts</h3>
+        {% if reddit_accounts %}
+            <ul class="space-y-4">
+                {% for account in reddit_accounts %}
+                    <li class="bg-gray-100 p-4 rounded-lg shadow-sm flex items-center justify-between border border-gray-200">
+                        <span class="text-gray-800 font-medium text-lg">u/{{ account.reddit_username }}</span>
+                        <form action="{% url 'delete_reddit_account' account.id %}" method="post" class="inline" onsubmit="return confirm('Are you sure you want to disconnect this Reddit account?');">
+                            {% csrf_token %}
+                            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-200 text-sm btn-danger">
+                                Disconnect
+                            </button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-gray-600 italic text-center">No Reddit accounts connected yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.getElementById('connect-reddit-btn').addEventListener('click', async () => {
+        const messageContainer = document.getElementById('message-container');
+        messageContainer.innerHTML = '<p class="p-3 rounded-md text-blue-600 bg-blue-100">Redirecting to Reddit for authorization...</p>';
+        try {
+            const response = await fetch('{% url "connect_reddit" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Include CSRF token for POST requests
+                },
+                body: JSON.stringify({}) // Empty body for a GET-like request
+            });
+            const data = await response.json();
+            if (response.ok && data.auth_url) {
+                window.location.href = data.auth_url; // Redirect user to Reddit OAuth page
+            } else {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">${data.message || 'Failed to get Reddit authorization URL.'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error getting Reddit auth URL:', error);
+            messageContainer.innerHTML = '<p class="p-3 rounded-md text-red-600 bg-red-100">An error occurred while initiating Reddit connection.</p>';
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

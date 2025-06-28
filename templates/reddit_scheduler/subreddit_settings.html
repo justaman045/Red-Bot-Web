@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Subreddit Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto p-8 bg-white rounded-xl shadow-2xl border border-gray-200">
+    <h2 class="text-4xl font-extrabold text-gray-800 mb-6 text-center">Manage Desired Subreddits</h2>
+
+    <div id="message-container" class="mb-6 text-center">
+        {% if messages %}
+            {% for message in messages %}
+                <p class="p-3 rounded-md {% if message.tags %}text-{{ message.tags }}-600 bg-{{ message.tags }}-100{% endif %}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+        <label for="newSubreddit" class="block text-lg font-medium text-gray-700 mb-2">Add New Subreddit</label>
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+            <input
+                type="text"
+                id="newSubreddit"
+                class="form-field flex-grow"
+                placeholder="e.g., pics, funny, my_subreddit"
+            />
+            <button id="add-subreddit-btn" class="px-6 py-3 rounded-lg font-semibold shadow-md btn-info flex items-center justify-center space-x-2 transform hover:scale-105">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path>
+                </svg>
+                <span>Add</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Current Desired Subreddits</h3>
+        <ul id="desired-subreddits-list" class="space-y-3"></ul>
+        <p id="no-subreddits-message" class="text-gray-600 italic text-center {% if desired_subreddits_list %}hidden{% endif %}">No subreddits added yet.</p>
+    </div>
+
+    <button id="save-settings-btn" class="w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-lg btn-primary flex items-center justify-center space-x-3 transform hover:scale-105">
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+        </svg>
+        <span>Save Settings</span>
+    </button>
+</div>
+
+{% block extra_js %}
+<script>
+    let desiredSubreddits = [];
+    const messageContainer = document.getElementById('message-container');
+    const newSubredditInput = document.getElementById('newSubreddit');
+    const addSubredditBtn = document.getElementById('add-subreddit-btn');
+    const desiredSubredditsList = document.getElementById('desired-subreddits-list');
+    const noSubredditsMessage = document.getElementById('no-subreddits-message');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+    const initialSubreddits = JSON.parse('{{ desired_subreddits_json|escapejs }}');
+    if (initialSubreddits.length > 0) {
+        desiredSubreddits = initialSubreddits;
+        renderSubreddits();
+    } else {
+        noSubredditsMessage.classList.remove('hidden');
+    }
+
+    function renderSubreddits() {
+        desiredSubredditsList.innerHTML = '';
+        if (desiredSubreddits.length > 0) {
+            noSubredditsMessage.classList.add('hidden');
+            desiredSubreddits.forEach(subreddit => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-100 p-4 rounded-lg shadow-sm flex items-center justify-between border border-gray-200';
+                li.innerHTML = `
+                    <span class="text-gray-800 font-medium text-lg">r/${subreddit}</span>
+                    <button data-subreddit="${subreddit}" class="remove-subreddit-btn px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-200 text-sm btn-danger">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm-1 3a1 1 0 011-1h4a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                `;
+                desiredSubredditsList.appendChild(li);
+            });
+            document.querySelectorAll('.remove-subreddit-btn').forEach(button => {
+                button.addEventListener('click', handleRemoveSubreddit);
+            });
+        } else {
+            noSubredditsMessage.classList.remove('hidden');
+        }
+    }
+
+    function handleRemoveSubreddit(event) {
+        const button = event.target.closest('.remove-subreddit-btn');
+        const subredditToRemove = button?.dataset.subreddit;
+        if (!subredditToRemove) return;
+
+        desiredSubreddits = desiredSubreddits.filter(sub => sub !== subredditToRemove);
+        messageContainer.innerHTML = '';
+        renderSubreddits();
+    }
+
+    addSubredditBtn.addEventListener('click', () => {
+        const subreddit = newSubredditInput.value.trim().toLowerCase();
+        if (subreddit && !desiredSubreddits.includes(subreddit)) {
+            desiredSubreddits.push(subreddit);
+            newSubredditInput.value = '';
+            messageContainer.innerHTML = '';
+            renderSubreddits();
+        } else if (subreddit) {
+            messageContainer.innerHTML = '<p class="p-3 rounded-md text-red-600 bg-red-100">Subreddit already added.</p>';
+        }
+    });
+
+    saveSettingsBtn.addEventListener('click', async () => {
+        messageContainer.innerHTML = '';
+        try {
+            const response = await fetch('{% url "subreddit_settings" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ desired_subreddits: desiredSubreddits }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-green-600 bg-green-100">${data.message}</p>`;
+            } else {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">${data.message || 'Failed to save settings.'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error saving subreddit settings:', error);
+            messageContainer.innerHTML = '<p class="p-3 rounded-md text-red-600 bg-red-100">An error occurred while saving settings.</p>';
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

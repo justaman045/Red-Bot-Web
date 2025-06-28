@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Subreddit Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-xl">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Manage Desired Subreddits</h2>
+    <div id="message-container" class="mb-4 text-center">
+        {% if messages %}
+            {% for message in messages %}
+                <p class="{% if message.tags %}text-{{ message.tags }}-600{% endif %}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="mb-6">
+        <label for="newSubreddit" class="block text-lg font-medium text-gray-700 mb-2">Add New Subreddit</label>
+        <div class="flex space-x-3">
+            <input
+                type="text"
+                id="newSubreddit"
+                class="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="e.g., pics, funny, my_subreddit"
+            />
+            <button id="add-subreddit-btn" class="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 font-semibold shadow-md">
+                Add
+            </button>
+        </div>
+    </div>
+
+    <div class="mb-6">
+        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Current Desired Subreddits</h3>
+        <ul id="desired-subreddits-list" class="space-y-3">
+            <!-- Subreddits will be loaded here by JavaScript -->
+        </ul>
+        <p id="no-subreddits-message" class="text-gray-600 italic text-center {% if desired_subreddits_list %}hidden{% endif %}">No subreddits added yet.</p>
+    </div>
+
+    <button id="save-settings-btn" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition duration-200 font-semibold text-lg shadow-md">
+        Save Settings
+    </button>
+</div>
+
+{% block extra_js %}
+<script>
+    let desiredSubreddits = [];
+    const messageContainer = document.getElementById('message-container');
+    const newSubredditInput = document.getElementById('newSubreddit');
+    const addSubredditBtn = document.getElementById('add-subreddit-btn');
+    const desiredSubredditsList = document.getElementById('desired-subreddits-list');
+    const noSubredditsMessage = document.getElementById('no-subreddits-message');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+    // Initial load of subreddits from Django context (if any)
+    const initialSubreddits = JSON.parse('{{ desired_subreddits_json|escapejs }}');
+    if (initialSubreddits.length > 0) {
+        desiredSubreddits = initialSubreddits;
+        renderSubreddits();
+    } else {
+        noSubredditsMessage.classList.remove('hidden');
+    }
+
+    function renderSubreddits() {
+        desiredSubredditsList.innerHTML = '';
+        if (desiredSubreddits.length > 0) {
+            noSubredditsMessage.classList.add('hidden');
+            desiredSubreddits.forEach(subreddit => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-50 p-3 rounded-md shadow-sm flex items-center justify-between';
+                li.innerHTML = `
+                    <span class="text-gray-700 font-medium text-lg">r/${subreddit}</span>
+                    <button data-subreddit="${subreddit}" class="remove-subreddit-btn px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition duration-200 text-sm">
+                        Remove
+                    </button>
+                `;
+                desiredSubredditsList.appendChild(li);
+            });
+            // Add event listeners to new remove buttons
+            document.querySelectorAll('.remove-subreddit-btn').forEach(button => {
+                button.addEventListener('click', handleRemoveSubreddit);
+            });
+        } else {
+            noSubredditsMessage.classList.remove('hidden');
+        }
+    }
+
+    addSubredditBtn.addEventListener('click', () => {
+        const subreddit = newSubredditInput.value.trim().toLowerCase();
+        if (subreddit && !desiredSubreddits.includes(subreddit)) {
+            desiredSubreddits.push(subreddit);
+            newSubredditInput.value = '';
+            messageContainer.innerHTML = '';
+            renderSubreddits();
+        } else if (subreddit) {
+            messageContainer.innerHTML = '<p class="text-red-600">Subreddit already added.</p>';
+        }
+    });
+
+    function handleRemoveSubreddit(event) {
+        const subredditToRemove = event.target.dataset.subreddit;
+        desiredSubreddits = desiredSubreddits.filter(sub => sub !== subredditToRemove);
+        messageContainer.innerHTML = '';
+        renderSubreddits();
+    }
+
+    saveSettingsBtn.addEventListener('click', async () => {
+        messageContainer.innerHTML = '';
+        try {
+            const response = await fetch('{% url "subreddit_settings" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ desired_subreddits: desiredSubreddits }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                messageContainer.innerHTML = `<p class="text-green-600">${data.message}</p>`;
+            } else {
+                messageContainer.innerHTML = `<p class="text-red-600">${data.message || 'Failed to save settings.'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error saving subreddit settings:', error);
+            messageContainer.innerHTML = '<p class="text-red-600">An error occurred while saving settings.</p>';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Select Subreddits to Post{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto p-8 bg-white rounded-xl shadow-2xl border border-gray-200">
+    <h2 class="text-4xl font-extrabold text-gray-800 mb-6 text-center">Post Now: Select Subreddits</h2>
+    <div id="message-container" class="mb-6 text-center"></div>
+
+    <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Post Details:</h3>
+        <p class="text-lg font-medium text-gray-800 mb-2">{{ post.title }}</p>
+        <p class="text-gray-600 mb-4">Original Subreddit: r/{{ post.original_subreddit }}</p>
+        {% if post.url %}
+            <p class="text-gray-600 mb-4">URL: <a href="{{ post.url }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ post.url }}</a></p>
+        {% endif %}
+        {% if post.media_url %}
+            <p class="text-gray-600 mb-4">Media URL: <a href="{{ post.media_url }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ post.media_url }}</a></p>
+        {% endif %}
+    </div>
+
+    <form id="post-to-subreddits-form" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" id="post-id" value="{{ post.id }}">
+
+        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Select Subreddits:</h3>
+        {% if desired_subreddits_list %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {% for subreddit in desired_subreddits_list %}
+                    <label class="flex items-center bg-gray-100 p-3 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-200 transition duration-150">
+                        <input type="checkbox" name="selected_subreddits" value="{{ subreddit }}" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                        <span class="ml-3 text-gray-800 font-medium">r/{{ subreddit }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-600 italic p-4 bg-yellow-50 rounded-md border border-yellow-200">
+                You haven't set any desired subreddits yet. Please go to "Manage Subreddit Settings" to add some.
+            </p>
+        {% endif %}
+
+        <button type="submit" id="confirm-post-btn" class="w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-lg btn-primary flex items-center justify-center space-x-3 transform hover:scale-105">
+            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path></svg>
+            <span>Confirm Post to Selected Subreddits</span>
+        </button>
+    </form>
+</div>
+
+{% block extra_js %}
+<script>
+    const messageContainer = document.getElementById('message-container');
+    const postIdInput = document.getElementById('post-id');
+    const postToSubredditsForm = document.getElementById('post-to-subreddits-form');
+    const confirmPostBtn = document.getElementById('confirm-post-btn');
+
+    postToSubredditsForm.addEventListener('submit', async function(event) {
+        event.preventDefault(); // Prevent default form submission
+
+        const postId = postIdInput.value;
+        const selectedSubreddits = Array.from(document.querySelectorAll('input[name="selected_subreddits"]:checked'))
+                                        .map(checkbox => checkbox.value);
+
+        if (selectedSubreddits.length === 0) {
+            messageContainer.innerHTML = '<p class="p-3 rounded-md text-red-600 bg-red-100">Please select at least one subreddit to post to.</p>';
+            return;
+        }
+
+        // Using a custom modal/dialog instead of `confirm()`
+        if (!window.confirm(`Are you sure you want to post this to ${selectedSubreddits.length} subreddit(s)?`)) { // Temporarily using confirm for simplicity, replace with custom modal
+            return;
+        }
+
+        messageContainer.innerHTML = '<p class="p-3 rounded-md text-blue-600 bg-blue-100">Posting in progress... This might take a moment.</p>';
+        confirmPostBtn.disabled = true; // Disable button to prevent multiple submissions
+
+        try {
+            const response = await fetch('{% url "perform_post_now" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    post_id: postId,
+                    selected_subreddits: selectedSubreddits
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-green-600 bg-green-100">${data.message}</p>`;
+                // Optionally redirect or update UI after successful posting
+                setTimeout(() => {
+                    window.location.href = '{% url "saved_posts_page" %}'; // Redirect back to saved posts
+                }, 3000); // Redirect after 3 seconds
+            } else {
+                messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">${data.message || 'Failed to post.'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error performing post:', error);
+            messageContainer.innerHTML = `<p class="p-3 rounded-md text-red-600 bg-red-100">An error occurred while posting: ${error.message}</p>`;
+        } finally {
+            confirmPostBtn.disabled = false; // Re-enable button
+        }
+    });
+</script>
+{% endblock %}
+
+{% endblock content %}

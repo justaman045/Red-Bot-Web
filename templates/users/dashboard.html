@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-8 bg-white rounded-xl shadow-2xl border border-gray-200">
+    <h2 class="text-4xl font-extrabold text-gray-800 mb-6 text-center">Your Dashboard</h2>
+    <p class="text-xl text-gray-700 mb-10 text-center">Welcome back, <span class="font-bold text-indigo-700">{{ user.username }}</span>!</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <!-- Connected Reddit Accounts Section -->
+        <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-100">
+            <h3 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm5.75 13.5c-.25 1.125-1.125 2-2.25 2.25-.875.125-1.75.25-2.625.25-.875 0-1.75-.125-2.625-.25-1.125-.25-2-1.125-2.25-2.25-.125-.875-.25-1.75-.25-2.625 0-.875.125-1.75.25-2.625.25-1.125 1.125-2 2.25-2.25.875-.125 1.75-.25 2.625-.25.875 0 1.75.125 2.625.25 1.125.25 2 1.125 2.25 2.25.125.875.25 1.75.25 2.625 0 .875-.125 1.75-.25 2.625zM10 5.5c-2.485 0-4.5 2.015-4.5 4.5s2.015 4.5 4.5 4.5 4.5-2.015 4.5-4.5-2.015-4.5-4.5-4.5z" clip-rule="evenodd"></path></svg>
+                Connected Reddit Accounts
+            </h3>
+            <div id="reddit-accounts-list" class="space-y-3">
+                <p class="text-gray-600 italic">Loading Reddit accounts...</p>
+            </div>
+            <p id="ifempty" class="text-gray-600 italic mt-4">No Reddit accounts connected yet. Connect one to get started!</p>
+        </div>
+
+        <!-- Desired Subreddit Settings Section -->
+        <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-100">
+            <h3 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path></svg>
+                Desired Subreddits for Posting
+            </h3>
+            <div id="subreddit-settings-list" class="space-y-3">
+                <p class="text-gray-600 italic">Loading subreddit settings...</p>
+            </div>
+            <p class="text-gray-600 italic mt-4">No desired subreddits set. Configure them to automate posting!</p>
+        </div>
+    </div>
+
+    <div class="mt-12 text-center">
+        <h3 class="text-3xl font-bold text-gray-800 mb-6">Quick Actions</h3>
+        <div class="flex flex-wrap justify-center gap-6">
+            <a href="{% url 'connect_reddit' %}" class="px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition duration-300 font-semibold text-lg shadow-lg btn-info flex items-center space-x-3 transform hover:scale-105">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 9.293a1 1 0 00-1.414 1.414L8.586 12l-1.293 1.293a1 1 0 101.414 1.414L10 13.414l1.293 1.293a1 1 0 001.414-1.414L11.414 12l1.293-1.293a1 1 0 00-1.414-1.414L10 10.586l-1.293-1.293z"></path></svg>
+                <span>Connect New Reddit Account</span>
+            </a>
+            <a href="{% url 'subreddit_settings' %}" class="px-8 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition duration-300 font-semibold text-lg shadow-lg btn-success flex items-center space-x-3 transform hover:scale-105">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path></svg>
+                <span>Manage Subreddit Settings</span>
+            </a>
+            <a href="{% url 'saved_posts_page' %}" class="px-8 py-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition duration-300 font-semibold text-lg shadow-lg btn-purple flex items-center space-x-3 transform hover:scale-105">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>
+                <span>View Saved Posts</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fetchRedditAccounts = async () => {
+            try {
+                const response = await fetch('{% url "get_reddit_accounts_api" %}'); // Django API endpoint for accounts
+                const data = await response.json();
+                const accountsListDiv = document.getElementById('reddit-accounts-list');
+                const ifempty = document.getElementById('ifempty');
+                ifempty.classList.add('hidden'); // Hide the "No accounts" message initially
+                accountsListDiv.innerHTML = ''; // Clear loading message
+
+                if (data.accounts.length > 0) {
+                    const ul = document.createElement('ul');
+                    ul.className = 'space-y-3';
+                    data.accounts.forEach(account => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center justify-between bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-200';
+                        li.innerHTML = `
+                            <span class="text-gray-800 font-medium text-lg">u/${account.username}</span>
+                        `;
+                        ul.appendChild(li);
+                    });
+                    accountsListDiv.appendChild(ul);
+                } else {
+                    accountsListDiv.innerHTML = '<p class="text-gray-600 italic">No Reddit accounts connected yet.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching Reddit accounts:', error);
+                document.getElementById('reddit-accounts-list').innerHTML = '<p class="text-red-600">Error loading Reddit accounts.</p>';
+            }
+        };
+
+        const fetchSubredditSettings = async () => {
+            try {
+                const response = await fetch('/reddit/settings/subreddits/'); // Django API endpoint for settings
+                const data = await response.json();
+                const settingsListDiv = document.getElementById('subreddit-settings-list');
+                settingsListDiv.innerHTML = ''; // Clear loading message
+
+                if (data.desired_subreddits.length > 0) {
+                    const ul = document.createElement('ul');
+                    ul.className = 'space-y-3';
+                    data.desired_subreddits.forEach(subreddit => {
+                        const li = document.createElement('li');
+                        li.className = 'bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-200 text-gray-800 font-medium text-lg';
+                        li.textContent = `r/${subreddit}`;
+                        ul.appendChild(li);
+                    });
+                    settingsListDiv.appendChild(ul);
+                } else {
+                    settingsListDiv.innerHTML = '<p class="text-gray-600 italic">No desired subreddits set.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching subreddit settings:', error);
+                document.getElementById('subreddit-settings-list').innerHTML = '<p class="text-red-600">Error loading subreddit settings.</p>';
+            }
+        };
+
+        fetchRedditAccounts();
+        fetchSubredditSettings();
+    });
+</script>
+{% endblock %}
+{% endblock %}

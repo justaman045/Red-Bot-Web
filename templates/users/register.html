@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load users_extras %} {# Load our custom filters #}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-[calc(100vh-16rem)] px-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-200">
+        <h2 class="text-4xl font-extrabold text-center text-gray-800 mb-8">Create Your Account</h2>
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
+                    {{ field|add_class:"form-field" }}
+                    {% if field.help_text %}
+                        <p class="mt-1 text-sm text-gray-500">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% if form.non_field_errors %}
+                <div class="text-red-600 text-sm p-3 bg-red-50 rounded-md">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <button type="submit" class="w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-md btn-secondary">
+                Register
+            </button>
+        </form>
+        <p class="mt-8 text-center text-gray-600">
+            Already have an account? <a href="{% url 'login' %}" class="text-indigo-600 hover:underline font-medium">Login here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% comment %}
+    The `add_class` filter is now defined in `users/templatetags/users_extras.py`
+    and loaded using `{% load users_extras %}` at the top of the template.
+    No need for the extra_js block for this purpose anymore.
+{% endcomment %}
