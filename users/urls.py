@@ -7,4 +7,5 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('status/', views.user_status_view, name='user_status'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('', views.login_view, name='default_login'),  # Redirect root to login view
 ]

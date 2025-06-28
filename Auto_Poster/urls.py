@@ -44,5 +44,5 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')), 
     
     # You might have a root path or other app paths here too
-    # path('', include('your_main_app_name.urls')), 
+    path('', include('users.urls')), 
 ]
